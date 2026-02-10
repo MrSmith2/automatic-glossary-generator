@@ -141,7 +141,7 @@ def extract_terms_spacy(text, top_n=30, coverage_percent=80, batch_size=None, pr
     stats["terms_extracted"] = len(terms[:top_n * 2])
     return terms[:top_n * 2], stats
 
-def extract_terms_llm(text, model_name="qwen3:4b", top_n=30, coverage_percent=80, chunk_size=None, progress_callback=None, seed=None):
+def extract_terms_llm(text, model_name="qwen3:4b", top_n=30, coverage_percent=80, chunk_size=None, context_size=8192, progress_callback=None, seed=None):
     if chunk_size is None:
         chunk_size = DEFAULT_LLM_CHUNK_SIZE
     
@@ -167,6 +167,7 @@ def extract_terms_llm(text, model_name="qwen3:4b", top_n=30, coverage_percent=80
         "processed_chars": process_len,
         "coverage_percent": round(process_len / total_len * 100, 1),
         "chunk_size": chunk_size,
+        "context_size": context_size,
         "chunks_total": len(chunks),
         "chunks_successful": 0
     }
@@ -180,7 +181,7 @@ def extract_terms_llm(text, model_name="qwen3:4b", top_n=30, coverage_percent=80
             progress_callback(i + 1, len(chunks))
         
         response, error = call_ollama(
-            TERM_EXTRACTION_PROMPT.format(text=chunk), model_name, 8192, TIMEOUT_EXTRACTION, seed=seed
+            TERM_EXTRACTION_PROMPT.format(text=chunk), model_name, context_size, TIMEOUT_EXTRACTION, seed=seed
         )
         if error:
             continue
@@ -215,10 +216,10 @@ def extract_terms_llm(text, model_name="qwen3:4b", top_n=30, coverage_percent=80
     return terms[:top_n * 2], stats
 
 def extract_terms(text, top_n=30, min_length=2, method="spacy", model_name="qwen3:4b", 
-                  coverage_percent=80, chunk_size=None, batch_size=None, progress_callback=None, seed=None):
+                  context_size=8192, coverage_percent=80, chunk_size=None, batch_size=None, progress_callback=None, seed=None):
     if method == "llm":
         try:
-            return extract_terms_llm(text, model_name, top_n, coverage_percent, chunk_size, progress_callback, seed=seed)
+            return extract_terms_llm(text, model_name, top_n, coverage_percent, chunk_size, context_size=context_size, progress_callback=progress_callback, seed=seed)
         except Exception as e:
             terms, stats = extract_terms_spacy(text, top_n, coverage_percent, batch_size, progress_callback)
             stats["fallback_reason"] = str(e)

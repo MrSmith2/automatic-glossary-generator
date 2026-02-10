@@ -32,7 +32,7 @@ with st.sidebar:
     else:
         model_name = st.text_input("Модель Ollama", "qwen3:4b")
     
-    context_size = st.selectbox("Контекст модели", [2048, 4096, 8192, 16384], index=2)
+    context_size = st.selectbox("Контекст модели", [4096, 8192, 16384], index=1)
     seed = st.number_input("Seed LLM", min_value=0, max_value=99999, value=DEFAULT_SEED)
     max_terms = st.slider("Макс. кол-во терминов", 10, 100, 50)
     context_window = st.slider("Окно контекста (символов)", 100, 500, 300)
@@ -57,14 +57,14 @@ with st.sidebar:
     if extraction_method == "llm":
         chunk_size = st.select_slider(
             "Размер чанка LLM",
-            options=[2000, 4000, 6000, 8000, 10000, 12000],
+            options=[4000, 8000, 12000, 16000],
             value=DEFAULT_LLM_CHUNK_SIZE
         )
         batch_size = None
     else:
         batch_size = st.select_slider(
             "Размер батча spaCy",
-            options=[50000, 75000, 100000, 150000, 200000],
+            options=[50000, 100000, 150000],
             value=DEFAULT_SPACY_BATCH_SIZE,
             format_func=lambda x: f"{x//1000}k"
         )
@@ -130,6 +130,7 @@ if st.button("Извлечь термины", disabled=not st.session_state.docu
             top_n=max_terms * 2,
             method=extraction_method,
             model_name=model_name,
+            context_size=context_size, 
             coverage_percent=coverage_percent,
             chunk_size=chunk_size,
             batch_size=batch_size,
@@ -147,6 +148,16 @@ if st.button("Извлечь термины", disabled=not st.session_state.docu
 
 if st.session_state.terms:
     st.subheader("Найденные термины")
+
+    terms_txt = "\n".join(
+        sorted(t["term"] for t in st.session_state.terms)
+    )
+    st.download_button(
+        "Скачать список терминов (TXT)",
+        terms_txt,
+        f"terms_{datetime.now():%Y%m%d_%H%M%S}.txt",
+        "text/plain"
+    )
     
     sort_alpha = st.checkbox("Сортировать по алфавиту", value=True)
     
